@@ -1,0 +1,68 @@
+const SerialPort = require('serialport');
+const disk = require('diskusage');
+const os = require('os');
+SerialPort.list().then(p => console.log(p));
+
+
+// Change the path here to your volume path to drive
+let path = os.platform() === 'win32' ? 'D:' : '/USB_NAME';
+// Change the port name here
+let portName = 'COM3';
+
+
+
+let port;
+
+/**
+ * Interval function
+ */
+var prev = -1;
+function checkHDD() {
+
+    /**
+     * Use diskusage to check the port
+     */
+
+    disk.check(path, function (err, info) {
+
+        if (!err) {
+
+            prev = prev === -1 ? info.free : prev;
+            var delta = Math.floor(((prev - info.free) / 1000));
+
+            console.log('delta: ' + (prev - info.free));
+
+            if (Math.abs(delta) > 0) {
+                console.log('GO PUMP: ' + delta);
+                port.write(delta.toString(), (err) =>
+                {
+                    if (err) {
+                        console.error(err);
+                    }
+                })
+            }
+
+            prev = info.free;
+
+        } else {
+            console.log(err);
+        }
+    });
+}
+
+/**
+ * Opening the port here
+ */
+port = new SerialPort(portName, {
+    baudRate: 9600
+}, (err) => {
+
+    /**
+     * Once it's opened, start the interval
+     */
+
+     setInterval(() => {
+         checkHDD();
+     }, 1000);
+
+})
